@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ocean & Slate — calm teal + navy (default) */
+:root,
+[data-theme="ocean"] {
+  --bg: 244 247 249;
+  --surface: 255 255 255;
+  --primary: 15 118 110;
+  --primary-light: 20 184 166;
+  --secondary: 30 41 59;
+  --text: 15 23 42;
+  --text-muted: 100 116 139;
+  --border: 226 232 240;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --danger: 220 38 38;
+  --accent: 56 189 248;
+}
+
+/* Sunset — energetic coral + amber */
+[data-theme="sunset"] {
+  --bg: 255 247 237;
+  --surface: 255 255 255;
+  --primary: 234 88 12;
+  --primary-light: 251 146 60;
+  --secondary: 159 18 57;
+  --text: 15 23 42;
+  --text-muted: 120 113 108;
+  --border: 254 215 170;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --danger: 220 38 38;
+  --accent: 245 158 11;
+}
+
+/* Forest — earthy sage + moss */
+[data-theme="forest"] {
+  --bg: 246 248 242;
+  --surface: 255 255 255;
+  --primary: 63 98 18;
+  --primary-light: 101 163 13;
+  --secondary: 54 83 20;
+  --text: 15 23 42;
+  --text-muted: 100 116 139;
+  --border: 220 229 208;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --danger: 220 38 38;
+  --accent: 101 163 13;
+}
+
+/* Berry & Plum — jewel-toned rose on soft blush */
+[data-theme="berry"] {
+  --bg: 253 244 247;
+  --surface: 255 255 255;
+  --primary: 157 23 77;
+  --primary-light: 236 72 153;
+  --secondary: 76 13 36;
+  --text: 15 23 42;
+  --text-muted: 120 113 108;
+  --border: 251 207 232;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --danger: 220 38 38;
+  --accent: 217 70 239;
+}
+
+/* Midnight — sleek dark indigo + violet */
+[data-theme="midnight"] {
+  --bg: 15 23 42;
+  --surface: 30 27 75;
+  --primary: 129 140 248;
+  --primary-light: 165 180 252;
+  --secondary: 196 181 253;
+  --text: 224 231 255;
+  --text-muted: 165 180 252;
+  --border: 55 48 163;
+  --success: 52 211 153;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
+  --accent: 167 139 250;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+::placeholder {
+  color: rgb(var(--text-muted));
+}
