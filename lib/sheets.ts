@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { google, sheets_v4 } from "googleapis";
-import type { Project, Item, Status } from "./types";
+import type { Project, Item, Status, Goal } from "./types";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "";
 
@@ -8,6 +8,11 @@ const PROJECTS_SHEET = "Projects";
 const ITEMS_SHEET = "Items";
 
 const PROJECTS_HEADERS = ["id", "name", "archived", "createdAt", "updatedAt"] as const;
+
+// NOTE: "goal" and "sentToDailyDashboard" were appended at the end on purpose.
+// Adding columns at the end (rather than in the middle) keeps any rows that
+// already exist in your sheet working — old rows will just read back as
+// goal="none" / sentToDailyDashboard=false, which is exactly what you want.
 const ITEMS_HEADERS = [
   "id",
   "projectId",
@@ -19,6 +24,8 @@ const ITEMS_HEADERS = [
   "onDashboard",
   "createdAt",
   "updatedAt",
+  "goal",
+  "sentToDailyDashboard",
 ] as const;
 
 let cachedClient: sheets_v4.Sheets | null = null;
@@ -77,6 +84,14 @@ async function ensureSheetExists(name: string, headers: readonly string[]) {
   });
   const row = headerRes.data.values?.[0];
   if (!row || row.length === 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${name}!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [headers as unknown as string[]] },
+    });
+  } else if (row.length < headers.length) {
+    // Existing sheet predates a header we've since added (e.g. "goal") — extend it in place.
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `${name}!A1`,
@@ -216,6 +231,8 @@ function rowToItem(r: Record<string, string>): Item {
     notes: r.notes || "",
     status: (r.status as Status) || "Not Started",
     onDashboard: r.onDashboard === "TRUE",
+    goal: (r.goal as Goal) || "none",
+    sentToDailyDashboard: r.sentToDailyDashboard === "TRUE",
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
@@ -231,6 +248,8 @@ function itemToRow(i: Partial<Item>): Record<string, string> {
   if (i.notes !== undefined) row.notes = i.notes;
   if (i.status !== undefined) row.status = i.status;
   if (i.onDashboard !== undefined) row.onDashboard = i.onDashboard ? "TRUE" : "FALSE";
+  if (i.goal !== undefined) row.goal = i.goal;
+  if (i.sentToDailyDashboard !== undefined) row.sentToDailyDashboard = i.sentToDailyDashboard ? "TRUE" : "FALSE";
   if (i.createdAt !== undefined) row.createdAt = i.createdAt;
   if (i.updatedAt !== undefined) row.updatedAt = i.updatedAt;
   return row;
@@ -279,6 +298,8 @@ type NewItemInput = {
   notes?: string;
   status?: Status;
   onDashboard?: boolean;
+  goal?: Goal;
+  sentToDailyDashboard?: boolean;
 };
 
 export async function createItem(input: NewItemInput): Promise<Item> {
@@ -292,6 +313,8 @@ export async function createItem(input: NewItemInput): Promise<Item> {
     notes: input.notes ?? "",
     status: input.status ?? "Not Started",
     onDashboard: input.onDashboard ?? false,
+    goal: input.goal ?? "none",
+    sentToDailyDashboard: input.sentToDailyDashboard ?? false,
     createdAt: now,
     updatedAt: now,
   };

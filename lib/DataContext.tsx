@@ -16,6 +16,7 @@ interface DataContextValue {
   addItem: (input: { projectId: string; parentId: string | null; title: string }) => Promise<void>;
   updateItemFields: (id: string, updates: Partial<Item>) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
+  sendToDailyDashboard: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -131,6 +132,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Pushes a one-way copy of this task into the separate Daily Dashboard app's
+  // Google Sheet (Category: Work, Priority: Moderate, Due date: the task's own date).
+  // This does not delete/undo anything if unmarked later — it's a "send", not a live sync.
+  const sendToDailyDashboard = useCallback(
+    async (id: string) => {
+      const item = items.find((i) => i.id === id);
+      if (!item || item.sentToDailyDashboard) return;
+      const project = projects.find((p) => p.id === item.projectId);
+
+      const res = await fetch("/api/daily-dashboard/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: item.title,
+          dueDate: item.date,
+          notes: item.notes,
+          projectName: project?.name ?? "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to send to Daily Dashboard");
+        return;
+      }
+
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, sentToDailyDashboard: true } : i)));
+      await fetch(`/api/items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentToDailyDashboard: true }),
+      });
+    },
+    [items, projects]
+  );
+
   const value = useMemo<DataContextValue>(
     () => ({
       projects,
@@ -145,6 +181,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addItem,
       updateItemFields,
       removeItem,
+      sendToDailyDashboard,
     }),
     [
       projects,
@@ -159,6 +196,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addItem,
       updateItemFields,
       removeItem,
+      sendToDailyDashboard,
     ]
   );
 

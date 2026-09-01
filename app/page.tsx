@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useData } from "@/lib/DataContext";
 import { Header } from "@/components/Header";
 import { StatsBar } from "@/components/StatsBar";
-import { DailyDashboard } from "@/components/DailyDashboard";
+import { PinnedPanel } from "@/components/PinnedPanel";
+import { GoalsPanel } from "@/components/GoalsPanel";
 import { ProjectList } from "@/components/ProjectList";
 
 export default function Home() {
@@ -37,9 +38,10 @@ export default function Home() {
           <>
             <StatsBar />
             <div>
-              <h2 className="text-base font-semibold text-secondary mb-3">Daily Dashboard</h2>
-              <DailyDashboard />
+              <h2 className="text-base font-semibold text-secondary mb-3">Pinned Tasks</h2>
+              <PinnedPanel />
             </div>
+            <GoalsPanel />
             {!focusMode && <ProjectList />}
           </>
         )}

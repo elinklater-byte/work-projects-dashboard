@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useData } from "@/lib/DataContext";
-import { STATUSES, type Item, type Status } from "@/lib/types";
+import { STATUSES, GOAL_OPTIONS, type Item, type Status, type Goal } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
 
 export function TaskItem({ item }: { item: Item }) {
-  const { updateItemFields, removeItem } = useData();
-  const [notesOpen, setNotesOpen] = useState(false);
+  const { updateItemFields, removeItem, sendToDailyDashboard } = useData();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [title, setTitle] = useState(item.title);
+  const [preDoneStatus, setPreDoneStatus] = useState<Status | null>(null);
+  const [sending, setSending] = useState(false);
 
   const commitTitle = () => {
     const trimmed = title.trim();
@@ -19,15 +21,33 @@ export function TaskItem({ item }: { item: Item }) {
     }
   };
 
+  const handleToggleComplete = (checked: boolean) => {
+    if (checked) {
+      setPreDoneStatus(item.status);
+      updateItemFields(item.id, { status: "Done" });
+    } else {
+      updateItemFields(item.id, { status: preDoneStatus ?? "Not Started" });
+    }
+  };
+
+  const handleSend = async () => {
+    if (item.sentToDailyDashboard || sending) return;
+    setSending(true);
+    await sendToDailyDashboard(item.id);
+    setSending(false);
+  };
+
+  const goalLabel = GOAL_OPTIONS.find((g) => g.value === item.goal)?.label;
+
   return (
     <div className="group">
       <div className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-bg">
         <input
           type="checkbox"
-          checked={item.onDashboard}
-          onChange={(e) => updateItemFields(item.id, { onDashboard: e.target.checked })}
-          title="Show on Daily Dashboard"
-          className="h-4 w-4 accent-accent shrink-0"
+          checked={item.status === "Done"}
+          onChange={(e) => handleToggleComplete(e.target.checked)}
+          title="Mark complete"
+          className="h-4 w-4 accent-success shrink-0"
         />
         <input
           value={title}
@@ -38,33 +58,35 @@ export function TaskItem({ item }: { item: Item }) {
             item.status === "Done" ? "line-through text-text-muted" : "text-text"
           }`}
         />
-        <input
-          type="date"
-          value={item.date ?? ""}
-          onChange={(e) => updateItemFields(item.id, { date: e.target.value || null })}
-          className="text-xs border border-border rounded-lg px-1.5 py-1 bg-surface text-text-muted"
-        />
-        <select
-          value={item.status}
-          onChange={(e) => updateItemFields(item.id, { status: e.target.value as Status })}
-          className="text-xs border border-border rounded-lg px-1.5 py-1 bg-surface"
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        {item.date && (
+          <span className="hidden sm:inline text-xs text-text-muted whitespace-nowrap">{item.date}</span>
+        )}
         <StatusBadge status={item.status} />
+        {item.goal !== "none" && (
+          <span
+            className="text-xs px-2 py-0.5 rounded-full bg-accent/15 text-accent whitespace-nowrap"
+            title={`Goal: ${goalLabel}`}
+          >
+            🎯 {goalLabel}
+          </span>
+        )}
+        {item.sentToDailyDashboard && (
+          <span
+            className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary whitespace-nowrap"
+            title="Sent to your Daily Dashboard app"
+          >
+            ↗ Sent
+          </span>
+        )}
         <button
           type="button"
-          onClick={() => setNotesOpen((v) => !v)}
+          onClick={() => setDetailsOpen((v) => !v)}
           className={`text-xs px-1.5 py-1 rounded-lg border ${
-            item.notes ? "border-primary text-primary" : "border-border text-text-muted"
+            detailsOpen || item.notes ? "border-primary text-primary" : "border-border text-text-muted"
           }`}
-          title="Notes"
+          title="Date, status, goal, notes, and more"
         >
-          Notes
+          Details
         </button>
         <button
           type="button"
@@ -74,14 +96,84 @@ export function TaskItem({ item }: { item: Item }) {
           Delete
         </button>
       </div>
-      {notesOpen && (
-        <textarea
-          defaultValue={item.notes}
-          onBlur={(e) => updateItemFields(item.id, { notes: e.target.value })}
-          placeholder="Notes..."
-          rows={2}
-          className="w-full text-sm border border-border rounded-lg px-2 py-1.5 mt-1 bg-surface outline-none focus:border-primary"
-        />
+
+      {detailsOpen && (
+        <div className="ml-6 mt-1 mb-2 p-3 rounded-lg border border-border bg-surface space-y-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <label className="flex items-center gap-1.5 text-xs text-text-muted">
+              Date
+              <input
+                type="date"
+                value={item.date ?? ""}
+                onChange={(e) => updateItemFields(item.id, { date: e.target.value || null })}
+                className="text-xs border border-border rounded-lg px-1.5 py-1 bg-bg text-text"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-text-muted">
+              Status
+              <select
+                value={item.status}
+                onChange={(e) => updateItemFields(item.id, { status: e.target.value as Status })}
+                className="text-xs border border-border rounded-lg px-1.5 py-1 bg-bg text-text"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-text-muted">
+              Goal
+              <select
+                value={item.goal}
+                onChange={(e) => updateItemFields(item.id, { goal: e.target.value as Goal })}
+                className="text-xs border border-border rounded-lg px-1.5 py-1 bg-bg text-text"
+              >
+                {GOAL_OPTIONS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <label className="flex items-center gap-1.5 text-xs text-text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={item.onDashboard}
+                onChange={(e) => updateItemFields(item.id, { onDashboard: e.target.checked })}
+                className="h-3.5 w-3.5 accent-accent"
+              />
+              Pin to top (this app)
+            </label>
+            <label
+              className={`flex items-center gap-1.5 text-xs ${
+                item.sentToDailyDashboard ? "text-primary" : "text-text-muted cursor-pointer"
+              }`}
+              title="Creates a task in your Daily Dashboard app: category Work, priority Moderate, due date = this task's date"
+            >
+              <input
+                type="checkbox"
+                checked={item.sentToDailyDashboard}
+                disabled={item.sentToDailyDashboard || sending}
+                onChange={handleSend}
+                className="h-3.5 w-3.5 accent-primary"
+              />
+              {item.sentToDailyDashboard ? "Sent to Daily Dashboard" : sending ? "Sending…" : "Send to Daily Dashboard"}
+            </label>
+          </div>
+
+          <textarea
+            defaultValue={item.notes}
+            onBlur={(e) => updateItemFields(item.id, { notes: e.target.value })}
+            placeholder="Notes..."
+            rows={2}
+            className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-bg text-text outline-none focus:border-primary"
+          />
+        </div>
       )}
     </div>
   );
